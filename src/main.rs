@@ -5,8 +5,20 @@
 
 use librustdesk::*;
 
+// Allow isolated parallel instances (e.g. one per RustDesk server) on the same
+// machine. The instance name drives config dir, tray mutex, IPC names and log dir.
+fn apply_app_name_override() {
+    if let Ok(name) = std::env::var("RUSTDESK_APP_NAME") {
+        let name = name.trim();
+        if !name.is_empty() {
+            *hbb_common::config::APP_NAME.write().unwrap() = name.to_owned();
+        }
+    }
+}
+
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
 fn main() {
+    apply_app_name_override();
     if !common::global_init() {
         eprintln!("Global initialization failed.");
         return;
@@ -18,6 +30,7 @@ fn main() {
 
 #[cfg(not(any(target_os = "android", target_os = "ios", feature = "flutter")))]
 fn main() -> std::process::ExitCode {
+    apply_app_name_override();
     #[cfg(windows)]
     if let Some(exit_code) = platform::handle_service_control() {
         return exit_code;
