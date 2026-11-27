@@ -1839,6 +1839,7 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
     if (hideServer && hideProxy && hideWebSocket) {
       return Offstage();
     }
+    ensureServerProfiles();
 
     // Helper function to create network setting ListTiles
     Widget listTile({
@@ -1924,12 +1925,37 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!hideServer)
+              if (!hideServer) ...[
+                listTile(
+                  icon: Icons.swap_horiz_outlined,
+                  title: 'Server profile',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final id in const [kServerProfileA, kServerProfileB])
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: ChoiceChip(
+                            label: Text(id.toUpperCase()),
+                            selected: getActiveServerProfile() == id,
+                            onSelected: locked
+                                ? null
+                                : (_) async {
+                                    await switchServerProfile(id);
+                                    setState(() {});
+                                  },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                divider,
                 listTile(
                   icon: Icons.dns_outlined,
                   title: 'ID/Relay Server',
                   onTap: () => showServerSettings(gFFI.dialogManager, setState),
                 ),
+              ],
               if (!hideProxy && !hideServer) divider,
               if (!hideProxy)
                 listTile(

@@ -2973,6 +2973,59 @@ class ServerConfig {
         key = options['key'] ?? "";
 }
 
+const kServerProfileA = 'a';
+const kServerProfileB = 'b';
+const kServerProfileActiveKey = 'server-profile-active';
+
+String _serverProfileKey(String id) => 'server-profile-$id';
+
+String getActiveServerProfile() =>
+    bind.mainGetLocalOption(key: kServerProfileActiveKey);
+
+ServerConfig currentServerConfig() {
+  try {
+    return ServerConfig.fromOptions(
+        jsonDecode(bind.mainGetOptionsSync()) as Map<String, dynamic>);
+  } catch (e) {
+    debugPrint('Failed to read current server config: $e');
+    return ServerConfig();
+  }
+}
+
+ServerConfig? loadServerProfile(String id) {
+  final raw = bind.mainGetLocalOption(key: _serverProfileKey(id));
+  if (raw.isEmpty) return null;
+  try {
+    return ServerConfig.decode(raw);
+  } catch (e) {
+    debugPrint('Invalid server profile $id: $e');
+    return null;
+  }
+}
+
+Future<void> saveServerProfile(String id, ServerConfig config) async {
+  await bind.mainSetLocalOption(
+      key: _serverProfileKey(id), value: config.encode());
+}
+
+void ensureServerProfiles() {
+  if (getActiveServerProfile().isNotEmpty) return;
+  saveServerProfile(kServerProfileA, currentServerConfig());
+  bind.mainSetLocalOption(
+      key: kServerProfileActiveKey, value: kServerProfileA);
+}
+
+Future<void> switchServerProfile(String id) async {
+  final config = loadServerProfile(id) ?? currentServerConfig();
+  await bind.mainSetOption(key: 'relay-server', value: config.relayServer);
+  await bind.mainSetOption(key: 'key', value: config.key);
+  await bind.mainSetOption(key: 'api-server', value: config.apiServer);
+  await bind.mainSetOption(
+      key: 'custom-rendezvous-server', value: config.idServer);
+  await saveServerProfile(id, config);
+  await bind.mainSetLocalOption(key: kServerProfileActiveKey, value: id);
+}
+
 Widget dialogButton(String text,
     {required VoidCallback? onPressed,
     bool isOutline = false,
@@ -3633,6 +3686,10 @@ Future<bool> setServerConfig(
   await bind.mainSetOption(key: 'relay-server', value: config.relayServer);
   await bind.mainSetOption(key: 'api-server', value: config.apiServer);
   await bind.mainSetOption(key: 'key', value: config.key);
+  final activeProfile = getActiveServerProfile();
+  if (activeProfile.isNotEmpty) {
+    await saveServerProfile(activeProfile, config);
+  }
   final newApiServer = await bind.mainGetApiServer();
   if (oldApiServer.isNotEmpty &&
       oldApiServer != newApiServer &&

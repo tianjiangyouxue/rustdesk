@@ -1076,7 +1076,6 @@ pub fn main_set_option(key: String, value: String) -> hbb_common::anyhow::Result
             hbb_common::tls::reset_tls_cache();
         }
         set_option(key, value.clone());
-        #[cfg(target_os = "android")]
         crate::rendezvous_mediator::RendezvousMediator::restart();
         #[cfg(any(target_os = "android", target_os = "ios"))]
         crate::common::test_rendezvous_server();
