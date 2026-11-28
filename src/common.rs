@@ -1213,6 +1213,18 @@ pub fn get_app_name() -> String {
     hbb_common::config::APP_NAME.read().unwrap().clone()
 }
 
+// Allow isolated parallel instances (e.g. one per RustDesk server) on the same
+// machine. The instance name drives config dir, tray mutex, IPC names and log dir.
+// Must run before anything reads Config for the first time.
+pub fn apply_app_name_override() {
+    if let Ok(name) = std::env::var("RUSTDESK_APP_NAME") {
+        let name = name.trim();
+        if !name.is_empty() {
+            *hbb_common::config::APP_NAME.write().unwrap() = name.to_owned();
+        }
+    }
+}
+
 #[inline]
 pub fn is_rustdesk() -> bool {
     hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")
